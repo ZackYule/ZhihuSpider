@@ -12,8 +12,8 @@ logger.remove()
 handler_id = logger.add(sys.stderr, level="INFO")
 
 def login(p,keyword):
-    browser = p.webkit.launch(headless=False, slow_mo = 100)
-
+    # browser = p.webkit.launch(headless=False, slow_mo = 100)
+    browser = p.webkit.launch()
     if os.path.isfile("state_zhihu.json"):
         with open("state_zhihu.json") as f:
             storage_state = json.loads(f.read())
@@ -22,6 +22,7 @@ def login(p,keyword):
         page.goto(f"https://www.zhihu.com/search?q={keyword}")
         logger.info("免认证登录成功")
     else:
+        logger.info("免认证登录失败，请打开有头模式手动验证...自动验证太难了555...")
         context = browser.new_context(viewport={ 'width': 1440, 'height': 860 })
         page = context.new_page()
          # Go to https://www.zhihu.com/signin?next=%2Fhot
@@ -29,17 +30,16 @@ def login(p,keyword):
         # Click text=密码登录
         page.locator("text=密码登录").click()
         # Click [placeholder="手机号或邮箱"]
-        page.locator("[placeholder=\"手机号或邮箱\"]").type("+8617631200131")
+        page.locator("[placeholder=\"手机号或邮箱\"]").type(ACCOUNT)
         # Click [placeholder="密码"]
-        page.locator("[placeholder=\"密码\"]").type("123Szx123")
+        page.locator("[placeholder=\"密码\"]").type(PASSWORD)
         # Click text=登录/注册
         page.locator("text=登录/注册").click()
         page.wait_for_timeout(10000)
-    
         storage = context.storage_state()
         with open("state_zhihu.json", "w") as f:
             f.write(json.dumps(storage))
-
+        logger.info('登录成功！')
     return (browser, context, page)
 
 def search_by_keyword(keyword):
@@ -51,6 +51,7 @@ def search_by_keyword(keyword):
 
         question_divs_count = refresh_times = 0
         while True:
+            logger.info('浏览数据中...')
             page.wait_for_timeout(1000)
             page.mouse.wheel(0,2000)
 
