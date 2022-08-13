@@ -1,6 +1,7 @@
 结果文件/
-settings.py
+real_settings.py
 state_zhihu.json
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

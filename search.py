@@ -9,11 +9,10 @@ from utils import *
 import sys
 
 logger.remove()
-handler_id = logger.add(sys.stderr, level="INFO")
+handler_id = logger.add(sys.stderr, level=LOGGER_LEVEL)
 
 def login(p,keyword):
-    # browser = p.webkit.launch(headless=False, slow_mo = 100)
-    browser = p.webkit.launch()
+    browser = p.webkit.launch(headless=HEAD_V, slow_mo = SLOW_MO_V)
     if os.path.isfile("state_zhihu.json"):
         with open("state_zhihu.json") as f:
             storage_state = json.loads(f.read())
@@ -47,7 +46,8 @@ def search_by_keyword(keyword):
         # 登录
         browser, context, page = login(p,keyword)
         page.locator("[aria-label=\"搜索\"]").click()
-        questions_div = page.locator("//div[@data-za-detail-view-path-module='AnswerItem']//div[@itemprop='zhihu:question']")
+        
+        content_divs = page.locator("//div[@data-za-detail-view-path-module='AnswerItem']//div[@itemprop='zhihu:question']")
 
         question_divs_count = refresh_times = 0
         while True:
@@ -55,7 +55,7 @@ def search_by_keyword(keyword):
             page.wait_for_timeout(1000)
             page.mouse.wheel(0,2000)
 
-            new_question_divs_count = questions_div.count()
+            new_question_divs_count = content_divs.count()
             logger.debug(new_question_divs_count)
             if question_divs_count == new_question_divs_count:
                 refresh_times += 1
@@ -66,25 +66,21 @@ def search_by_keyword(keyword):
                 break
             question_divs_count = new_question_divs_count
         
-        logger.debug(questions_div.all_inner_texts())
-        questions_urls = questions_div.locator("//meta[@itemprop='url']")
-        questions_titles = questions_div.locator("//meta[@itemprop='name']")
-        question_urls_count = questions_urls.count()
-        question_titles_count = questions_titles.count()
+        logger.debug(content_divs.all_inner_texts())
+        content_elements = content_divs.element_handles()
 
-        if question_urls_count != question_divs_count or question_titles_count != question_divs_count:
-            logger.warning('爬到的问题数和拿到的内容个数不一致,问题数、问题内容数、问题链接数分别是：',question_divs_count,question_titles_count,question_urls_count)
-        
-        question_list = []
-        for i in range(question_urls_count):
-            question_list.append({'title':questions_titles.nth(i).get_attribute("content"),'url':questions_urls.nth(i).get_attribute("content")})
-        
+        logger.debug(len(content_elements) == content_divs.count())
+
         logger.info('开始写入数据...')
-        logger.debug(question_list)
-        for item in question_list:
+        for content_element in content_elements:
+            item = {
+                'title':content_element.query_selector("//meta[@itemprop='name']").get_attribute("content"),
+                'url':content_element.query_selector("//meta[@itemprop='url']").get_attribute("content")}
+            logger.debug(item)
             csv_pipeline(item, KEYWORD, item.keys())
         logger.info('写入完毕...')
-
+        
+        # page.pause()
         context.close()
         browser.close()
 
