@@ -1,0 +1,2 @@
+KEYWORD = '西安'
+MAX_REFRESH_TIMES = 3
