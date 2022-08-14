@@ -1,59 +1,30 @@
-from ast import keyword
-from json.tool import main
-import json
-import os
 from playwright.sync_api import sync_playwright
-from loguru import logger
 from settings import *
 from utils import *
+from loguru import logger
 import sys
 
 logger.remove()
 handler_id = logger.add(sys.stderr, level=LOGGER_LEVEL)
 
-def login(p,keyword):
-    browser = p.webkit.launch(headless=HEAD_V, slow_mo = SLOW_MO_V)
-    if os.path.isfile("state_zhihu.json"):
-        with open("state_zhihu.json") as f:
-            storage_state = json.loads(f.read())
-        context = browser.new_context(viewport={ 'width': 1440, 'height': 860 },storage_state=storage_state)
-        page = context.new_page()
-        page.goto(f"https://www.zhihu.com/search?q={keyword}")
-        logger.info("免认证登录成功")
-    else:
-        logger.info("免认证登录失败，请打开有头模式手动验证...自动验证太难了555...")
-        context = browser.new_context(viewport={ 'width': 1440, 'height': 860 })
-        page = context.new_page()
-         # Go to https://www.zhihu.com/signin?next=%2Fhot
-        page.goto("https://www.zhihu.com/signin?next=%2Fhot")
-        # Click text=密码登录
-        page.locator("text=密码登录").click()
-        # Click [placeholder="手机号或邮箱"]
-        page.locator("[placeholder=\"手机号或邮箱\"]").type(ACCOUNT)
-        # Click [placeholder="密码"]
-        page.locator("[placeholder=\"密码\"]").type(PASSWORD)
-        # Click text=登录/注册
-        page.locator("text=登录/注册").click()
-        page.wait_for_timeout(10000)
-        storage = context.storage_state()
-        with open("state_zhihu.json", "w") as f:
-            f.write(json.dumps(storage))
-        logger.info('登录成功！')
-    return (browser, context, page)
 
-def search_by_keyword(keyword):
-    with sync_playwright() as p:
+def search_by_keyword(keyword, max_num_of_questions = 100000):
+    with sync_playwright() as playwright:
         # 登录
-        browser, context, page = login(p,keyword)
+        base_url = f"https://www.zhihu.com/search?q={keyword}"
+        browser, context, page = login(playwright, base_url)
         page.locator("[aria-label=\"搜索\"]").click()
         
         content_divs = page.locator("//div[@data-za-detail-view-path-module='AnswerItem']//div[@itemprop='zhihu:question']")
 
         question_divs_count = refresh_times = 0
-        while True:
+        while content_divs.count() <= max_num_of_questions:
             logger.info('浏览数据中...')
             page.wait_for_timeout(1000)
-            page.mouse.wheel(0,2000)
+            # page.mouse.wheel(0,2000)
+            content_divs.last.scroll_into_view_if_needed()
+            answer_div_height = content_divs.last.bounding_box()['height']
+            page.mouse.wheel(0,answer_div_height/2)
 
             new_question_divs_count = content_divs.count()
             logger.debug(new_question_divs_count)
@@ -77,7 +48,7 @@ def search_by_keyword(keyword):
                 'title':content_element.query_selector("//meta[@itemprop='name']").get_attribute("content"),
                 'url':content_element.query_selector("//meta[@itemprop='url']").get_attribute("content")}
             logger.debug(item)
-            csv_pipeline(item, KEYWORD, item.keys())
+            csv_pipeline(item, KEYWORD, '问题链接', item.keys())
         logger.info('写入完毕...')
         
         # page.pause()
@@ -85,5 +56,5 @@ def search_by_keyword(keyword):
         browser.close()
 
 if __name__ == "__main__":
-    search_by_keyword(KEYWORD)
+    search_by_keyword(KEYWORD, MAX_NUM_OF_QUESTIONS)
     
