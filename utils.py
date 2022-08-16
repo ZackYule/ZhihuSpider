@@ -8,6 +8,19 @@ from settings import *
 logger.remove()
 handler_id = logger.add(sys.stderr, level=LOGGER_LEVEL)
 
+def safe_drag_list(locator_list, page):
+    try:
+        locator_list.last.scroll_into_view_if_needed()
+        content_div_height = locator_list.last.bounding_box()['height']
+        page.mouse.wheel(0,content_div_height/2)
+        # if content_div_height > 860:
+        #     logger.debug('太大放不下了...')  
+    except Exception:
+        logger.warning('最后一个块儿无法获取高度...')
+        logger.warning(locator_list.last)
+        logger.warning(Exception)
+        page.mouse.wheel(0,500)
+
 def safe_get_field_from_element(element, selector, attribute_name=""):
     try:
         if attribute_name:
@@ -37,9 +50,9 @@ def csv_pipeline(item:dict, keyword:str, content_type:str, header:list[str]):
                     writer.writerow(header)
             writer.writerow([item[key] for key in item.keys()])
 
-def get_content_info_from_csv(title:str)->list[dict]:
+def get_content_info_from_csv(title:str, content_type:str)->list[dict]:
     base_dir = '结果文件' + os.sep + title
-    file_path = base_dir + os.sep + title +'问题链接' + '.csv'
+    file_path = base_dir + os.sep + title + content_type + '.csv'
 
     if not (os.path.isdir(base_dir) |  os.path.isfile(file_path)):
         return []
