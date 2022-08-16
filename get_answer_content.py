@@ -11,6 +11,8 @@ handler_id = logger.add(sys.stderr, level=LOGGER_LEVEL)
 def get_QA_info_from_url(content_item, max_num_of_answers = 100000):
     url = content_item['url']
     title = content_item['title']
+    logger.info(f'开始爬取问题：{title}')
+    logger.debug(f'问题网址：{url}')
 
     with sync_playwright() as playwright:
         # 登录
@@ -27,22 +29,19 @@ def get_QA_info_from_url(content_item, max_num_of_answers = 100000):
 
         answer_divs = page.locator("//div[@role='list']/div[@tabindex]")
         
-        answer_divs_count = refresh_times = 0
+        answer_divs_count = invalid_refresh_times = 0
         while answer_divs.count() <= max_num_of_answers:
-            logger.info('浏览数据中...')
+            logger.info(f'浏览数据中... 已经浏览了{answer_divs_count}条回答')
             page.wait_for_timeout(1000)
-            answer_divs.last.scroll_into_view_if_needed()
-            answer_div_height = answer_divs.last.bounding_box()['height']
-            page.mouse.wheel(0,answer_div_height/2)
-            # if answer_div_height > 860:
-            #     logger.debug('太大放不下了...')    
+            safe_drag_list(answer_divs, page)
+     
             new_answer_divs_count = answer_divs.count()
             logger.debug(new_answer_divs_count)
-            if answer_divs_count == new_answer_divs_count:
-                refresh_times += 1
+            if answer_divs_count >= new_answer_divs_count:
+                invalid_refresh_times += 1
             else:
-                refresh_times = 0
-            if refresh_times >= MAX_REFRESH_TIMES:
+                invalid_refresh_times = 0
+            if invalid_refresh_times >= MAX_INVALID_REFRESH_TIMES:
                 logger.info('刷新页面结束')
                 break
             answer_divs_count = new_answer_divs_count
@@ -75,6 +74,6 @@ def get_QA_info_from_url(content_item, max_num_of_answers = 100000):
 
 
 if __name__ == "__main__":
-    content_list = get_content_info_from_csv(KEYWORD)
+    content_list = get_content_info_from_csv(KEYWORD, '问题链接')
     for content_item in content_list:
         get_QA_info_from_url(content_item, MAX_NUM_OF_ANSWERS)

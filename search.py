@@ -22,9 +22,7 @@ def search_by_keyword(keyword, max_num_of_questions = 100000):
             logger.info('浏览数据中...')
             page.wait_for_timeout(1000)
             # page.mouse.wheel(0,2000)
-            content_divs.last.scroll_into_view_if_needed()
-            answer_div_height = content_divs.last.bounding_box()['height']
-            page.mouse.wheel(0,answer_div_height/2)
+            safe_drag_list(content_divs, page)
 
             new_question_divs_count = content_divs.count()
             logger.debug(new_question_divs_count)
