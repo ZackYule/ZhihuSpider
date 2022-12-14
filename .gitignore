@@ -1,6 +1,7 @@
 结果文件/
-real_settings.py
+settings.py
 state_zhihu.json
+.DS_Store
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
@@ -131,3 +132,4 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+_settings.py
