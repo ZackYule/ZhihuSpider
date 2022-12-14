@@ -8,14 +8,16 @@ logger.remove()
 handler_id = logger.add(sys.stderr, level=LOGGER_LEVEL)
 
 
-def search_by_keyword(keyword, max_num_of_questions = 100000):
+def search_by_keyword(keyword, max_num_of_questions=100000):
     with sync_playwright() as playwright:
         # 登录
         base_url = f"https://www.zhihu.com/search?q={keyword}"
         browser, context, page = login(playwright, base_url)
         page.locator("[aria-label=\"搜索\"]").click()
-        
-        content_divs = page.locator("//div[@data-za-detail-view-path-module='AnswerItem']//div[@itemprop='zhihu:question']")
+
+        content_divs = page.locator(
+            "//div[@data-za-detail-view-path-module='AnswerItem']//div[@itemprop='zhihu:question']"
+        )
 
         question_divs_count = refresh_times = 0
         while content_divs.count() <= max_num_of_questions:
@@ -30,11 +32,11 @@ def search_by_keyword(keyword, max_num_of_questions = 100000):
                 refresh_times += 1
             else:
                 refresh_times = 0
-            if refresh_times >= MAX_REFRESH_TIMES:
+            if refresh_times >= MAX_INVALID_REFRESH_TIMES:
                 logger.info('刷新页面结束')
                 break
             question_divs_count = new_question_divs_count
-        
+
         logger.debug(content_divs.all_inner_texts())
         content_elements = content_divs.element_handles()
 
@@ -43,16 +45,21 @@ def search_by_keyword(keyword, max_num_of_questions = 100000):
         logger.info('开始写入数据...')
         for content_element in content_elements:
             item = {
-                'title':content_element.query_selector("//meta[@itemprop='name']").get_attribute("content"),
-                'url':content_element.query_selector("//meta[@itemprop='url']").get_attribute("content")}
+                'title':
+                content_element.query_selector(
+                    "//meta[@itemprop='name']").get_attribute("content"),
+                'url':
+                content_element.query_selector(
+                    "//meta[@itemprop='url']").get_attribute("content")
+            }
             logger.debug(item)
             csv_pipeline(item, KEYWORD, '问题链接', item.keys())
         logger.info('写入完毕...')
-        
+
         # page.pause()
         context.close()
         browser.close()
 
+
 if __name__ == "__main__":
     search_by_keyword(KEYWORD, MAX_NUM_OF_QUESTIONS)
-    
